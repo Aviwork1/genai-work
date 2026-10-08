@@ -163,6 +163,19 @@ uv run pytest tests/test_s14.py          # checkpoint (offline-safe)
 Pre-read: `module02/reading_prompt_anatomy.md`. **Before class:** read `module02/work_repo_steps.md` and have your GitHub username ready.
 Terms: `module02/terms_s14.md`. Your submission is a pushed `prompts/library.md` in **your own** `genai-course-work` repository, not this one.
 
+## Session 15 — reasoning prompts: when thinking helps, and what it costs
+
+```powershell
+git pull
+uv sync                                  # no new packages
+uv run jupyter lab module02/s15_reasoning.ipynb
+uv run pytest tests/test_s15.py          # checkpoint (offline-safe)
+```
+Pre-read: `module02/reading_reasoning.md` (10 minutes). Terms: `module02/terms_s15.md`. A loan-eligibility checker for ten applicants, asked four ways
+(plain, step by step, step back, vote), with tokens, seconds and cost per 1,000 questions. **Budget:** about 40,000-80,000 tokens of a free key's
+200,000-a-day limit; answers are remembered on disk (`~/.genai_course/`), so re-running a cell is free. Your submission is `experiments/s15_accuracy_table.md`
+and version-2 entries in `prompts/library.md`, both pushed to **your own** `genai-course-work` repository.
+
 ## Layout
 ```
 module01/                   Session 9b notebook, helpers, pre-read
@@ -177,7 +190,8 @@ tests/test_s11.py           Session 11 checkpoint
 tests/test_s12.py           Session 12 checkpoint
 tests/test_s13.py           Session 13 checkpoint
 tests/test_s14.py           Session 14 checkpoint
-module02/                   Module 2 (prompt engineering): S14 notebook, helpers, work-repo steps
+tests/test_s15.py           Session 15 checkpoint
+module02/                   Module 2 (prompt engineering): S14-S15 notebooks, helpers, work-repo steps
 cheatsheet/python-for-agents.md
 .env.example                copy to .env
 pyproject.toml              pinned dependencies (uv sync)
