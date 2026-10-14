@@ -26,7 +26,7 @@ Two repos live side by side in `Documents`: **genai-course-work** (yours — you
 | 8 | Clone this course repo alongside | `cd ~\Documents` · `git clone https://github.com/byruajit/genai-agents-course.git` · `cd genai-agents-course` · `type .gitignore` · `git pull` |
 | 9 | **Checkpoint** | Your GitHub page shows ≥ 2 commits and the merge; `git config --global --list` shows your name and email |
 
-Start every session with `git pull` in this repo.
+Start every session with `git pull` in this repo. If it refuses because you saved a notebook, see [UPDATING.md](UPDATING.md) (or run `uv run python tools/update_course.py`).
 
 **Secrets:** `.env` is in `.gitignore`, so `git add` ignores it. If a key ever reaches a commit it is public within minutes — revoke it in the Groq console and create a new one.
 
@@ -79,6 +79,18 @@ You create your own free Groq key at console.groq.com. It lives in `.env` and no
 - Submission form: _(added by instructor)_
 - Baseline quiz: _(added by instructor)_
 - Fix videos: _(coming)_
+
+## Session 9a — your environment and your first LLM call, explained
+
+```powershell
+git pull
+uv sync
+uv run jupyter lab module01/s09a_first_call.ipynb
+uv run pytest tests/test_s09a.py         # offline check of the notebook
+```
+A guided notebook for Session 2's setup and `hello.py`: the two repositories, `uv`, `.env`, and the first call rebuilt cell by cell (whole reply, then streamed, then the token count). Runs without a key: model cells say "skipped".
+
+**All notebooks from Session 9a to 16 now have long explanations** (Part A: why, the words you need, how the session is built; six steps per section; Part C: summary, interview questions, troubleshooting). If `git pull` complains that your local changes would be overwritten, follow [UPDATING.md](UPDATING.md).
 
 ## Session 9b — tokens, cost, context, embeddings
 
@@ -191,12 +203,46 @@ Pre-read: `module02/reading_structured.md` (10 minutes). Terms: `module02/terms_
 `prompts/support_classifier/user.j2` and `experiments/s16_heldout.md`, pushed to **your own** `genai-course-work` repository. The checkpoint test is skipped without a key
 (read the reason with `-rs`: a skip is not a pass) and fails on purpose with a key but no `WORK_REPO`.
 
+## Session 17 — prompt evaluation: a golden set, a rubric, and a judge
+
+```powershell
+git pull
+uv sync                                  # no new packages
+uv run jupyter lab module02/s17_evaluation.ipynb
+$env:WORK_REPO = "$HOME\Documents\genai-course-work"
+uv run pytest tests/test_s17.py -rs      # checkpoint: a complete evaluation report, both prompts, 20 tickets, + a 5-ticket spot-check
+```
+No pre-read notebook: Part A of `s17_evaluation.ipynb` is self-contained. Scores your Session 14 baseline against your Session 16 structured prompt
+on the SAME twenty held-out tickets (reused, not new data), using a second model call as an LLM judge against a four-criterion rubric (correct label,
+cites the right house rule, follows the reply format, invents no policy). Guards against the judge's own biases (position, verbosity, self-preference)
+with a shuffled answer order and a five-ticket human spot-check. **Budget:** about 60,000-90,000 tokens of a free key's 200,000-a-day limit — roughly
+double Session 16's, since every ticket is answered AND judged, for both prompts. Your submission is `experiments/s17_eval.md`, pushed to **your own**
+`genai-course-work` repository; your Session 16 `prompts/support_classifier/` files are read, not changed. The checkpoint test is skipped without a key
+(read the reason with `-rs`: a skip is not a pass).
+
+## Session 18 — defensive prompting: attacking your own classifier, on purpose
+
+```powershell
+git pull
+uv sync                                  # no new packages
+uv run jupyter lab module02/s18_defensive_prompting.ipynb
+$env:WORK_REPO = "$HOME\Documents\genai-course-work"
+uv run pytest tests/test_s18.py -rs      # checkpoint: a complete defense report, 16 attacks x 2 prompts, + clean accuracy held
+```
+Pre-read: none, Part A of `s18_defensive_prompting.ipynb` is self-contained. Terms: `module02/terms_s18.md`. Attacks Session 16's classifier on purpose
+with 16 adversarial tickets across four families (override, authority, exfiltrate, smuggle), then hardens the system prompt with an instruction
+hierarchy and a scratchpad/final reply split, and re-measures. Session 16's own held-out set checks the defense did not break ordinary accuracy.
+**Budget:** about 50,000-80,000 tokens of a free key's 200,000-a-day limit (16 attack tickets + 20 clean tickets, each prompt). Your submission is
+`experiments/s18_defense.md`, pushed to **your own** `genai-course-work` repository; your Session 16 files are read, not changed. The checkpoint test
+is skipped without a key (read the reason with `-rs`: a skip is not a pass).
+
 ## Layout
 ```
-module01/                   Session 9b notebook, helpers, pre-read
+module01/                   Sessions 9a-13 notebooks, helpers, pre-reads
 hello.py                    Session 2 first call
 list_models.py              which models your key can use
 tests/test_setup.py         Session 2 checkpoint
+tests/test_s09a.py          Session 9a notebook check (offline)
 tests/test_s09.py           Session 9b checkpoint
 tests/test_s10.py           Session 10 checkpoint
 showcase/a2_insurance/      Showcase A2 (Insurance workflow) + its own tests
@@ -207,8 +253,12 @@ tests/test_s13.py           Session 13 checkpoint
 tests/test_s14.py           Session 14 checkpoint
 tests/test_s15.py           Session 15 checkpoint
 tests/test_s16.py           Session 16 checkpoint
-module02/                   Module 2 (prompt engineering): S14-S16 notebooks, helpers, work-repo steps
+tests/test_s17.py           Session 17 checkpoint
+tests/test_s18.py           Session 18 checkpoint
+module02/                   Module 2 (prompt engineering): S14-S18 notebooks, helpers, work-repo steps
 cheatsheet/python-for-agents.md
+tools/update_course.py      safe update: back up your edited notebooks, then git pull
+UPDATING.md                 how to update when git pull refuses
 .env.example                copy to .env
 pyproject.toml              pinned dependencies (uv sync)
 ```
