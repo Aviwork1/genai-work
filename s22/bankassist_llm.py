@@ -71,8 +71,7 @@ def ask_once(model: str, question: str):
     S20/S21 link: the response has the same shape as the OpenAI SDK's -
         response.choices[0].message.content   and   response.usage.total_tokens
     """
-    raise NotImplementedError("TODO 1")
-
+    return completion(**params(model), messages=messages_for(question), temperature=0, max_tokens=1500)
 
 # ================================================================ STEP 2 - same code, two models
 def compare(question: str) -> list:
@@ -86,7 +85,11 @@ def compare(question: str) -> list:
         return out
     The point: only the model STRING changes. No new client, no new SDK.
     """
-    raise NotImplementedError("TODO 2")
+    out = []
+    for model in (PRIMARY, FALLBACK):
+        response = ask_once(model, question)
+        out.append((model, response.choices[0].message.content))
+    return out
 
 
 # ================================================================ STEP 3 - a Router with a fallback
@@ -105,7 +108,15 @@ def make_router(primary: str = PRIMARY, fallback: str = FALLBACK) -> Router:
         )
     "bankassist" is a NAME YOU CHOOSE (a model group). Your app asks for the name, not the provider.
     """
-    raise NotImplementedError("TODO 3")
+    return Router(
+        model_list=[
+            {"model_name": "bankassist",        "litellm_params": params(primary)},
+            {"model_name": "bankassist-backup", "litellm_params": params(fallback)},
+        ],
+        fallbacks=[{"bankassist": ["bankassist-backup"]}],
+        num_retries=1,      # try the same model once more before falling back
+        timeout=30,         # seconds - a hung provider counts as a failure
+    )
 
 
 # ================================================================ STEP 4 - what did that cost?
@@ -122,8 +133,13 @@ def cost_line(response, model: str, seconds: float) -> str:
         return f"{model} | {p + c} tokens | ${cost:.6f} | {seconds:.2f}s"
     Prices come from the list shipped with litellm 1.80.0. They are list prices, in US dollars.
     """
-    raise NotImplementedError("TODO 4")
-
+    p, c = response.usage.prompt_tokens, response.usage.completion_tokens
+    try:
+        cost_in, cost_out = cost_per_token(model=model, prompt_tokens=p, completion_tokens=c)
+        cost = cost_in + cost_out
+    except Exception:
+        cost = 0.0          # local models (Ollama) have no price - and cost nothing per token
+    return f"{model} | {p + c} tokens | ${cost:.6f} | {seconds:.2f}s"
 
 # ================================================================ STEP 5 (stretch) - every answer logged
 # TODO 5: write ask_logged(router, question) -> str that:
@@ -133,6 +149,20 @@ def cost_line(response, model: str, seconds: float) -> str:
 #                             (and, if fallbacks_used(response) > 0, print that a fallback answered)
 #   4. returns the text:      response.choices[0].message.content
 
+def ask_logged(router, question) -> str:
+    # 1. starts a timer:
+    t = time.perf_counter()
+    
+    # 2. asks the router:
+    response = router.completion(model="bankassist", messages=messages_for(question))
+    
+    # 3. prints one log line:
+    print(cost_line(response, answered_by(response), time.perf_counter() - t))
+    if fallbacks_used(response) > 0:
+        print(" (fallback answered)")
+        
+    # 4. returns the text:
+    return response.choices[0].message.content
 
 # ================================================================ run me after every TODO
 def _step(n, fn):
