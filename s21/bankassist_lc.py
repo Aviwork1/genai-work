@@ -40,8 +40,8 @@ def make_llm():
         temperature = 0, max_tokens = 1500
     S20 link: this one object replaces OpenAI(...) + client.chat.completions.create(...).
     """
-    raise NotImplementedError("TODO 1")
-
+    return ChatOpenAI(model=os.environ["MODEL"], base_url=os.environ["BASE_URL"],
+                  api_key=os.environ["API_KEY"], temperature=0, max_tokens=1500)
 
 # ================================================================ STEP 2 - prompt | model | parser
 def make_chain(llm):
@@ -52,7 +52,8 @@ def make_chain(llm):
         return prompt | llm | StrOutputParser()
     The | pipe means: the output of the left becomes the input of the right.
     """
-    raise NotImplementedError("TODO 2")
+    prompt = ChatPromptTemplate.from_messages([("system", SYSTEM), ("human", "{question}")])
+    return prompt | llm | StrOutputParser()
 
 
 # ================================================================ STEP 3 - a tool, as a normal Python function
@@ -70,7 +71,9 @@ def calculate_emi(principal: float, annual_rate: float, tenure_months: int) -> i
     #   emi = principal * r * (1 + r) ** tenure_months / ((1 + r) ** tenure_months - 1)
     # Check: 25 lakh at 8.5% for 240 months must give 21696.
     # Note: the DOCSTRING above is what the model reads - it is your prompt. Keep parse_docstring=True.
-    raise NotImplementedError("TODO 3")
+    r = annual_rate / 12 / 100
+    emi = principal * r * (1 + r) ** tenure_months / ((1 + r) ** tenure_months - 1)
+    return round(emi)
 
 
 # The tools the model may use, by name. STEP 5 adds get_rate here.
@@ -95,7 +98,16 @@ def ask(llm_with_tools, question: str, max_steps: int = 3) -> str:
     S20 link: no json.loads (args is already a dict) and no hand-made tool_call_id - LangChain does both.
     The loop and its cap are still YOURS. A loop with no cap is an agent - Module 6.
     """
-    raise NotImplementedError("TODO 4")
+    messages = [SystemMessage(SYSTEM), HumanMessage(question)]
+    for step in range(1, max_steps + 1):
+        ai = llm_with_tools.invoke(messages)
+        messages.append(ai)
+        if not ai.tool_calls:              # the model answered in words - we are done
+            return ai.content
+        for call in ai.tool_calls:          # call["name"], call["args"] (a dict), call["id"]
+            print(f"  step {step}: {call['name']}({call['args']})")
+            messages.append(TOOLS[call["name"]].invoke(call))   # returns a ToolMessage with the SAME id
+    return "(stopped: step cap reached)"
 
 
 # ================================================================ STEP 5 (stretch) - a second tool, two steps in order
@@ -103,6 +115,19 @@ def ask(llm_with_tools, question: str, max_steps: int = 3) -> str:
 # saying what it does and describing both arguments. Rates: home_loan floating 8.5, home_loan fixed 9.0,
 # personal_loan fixed 10.5. Then add it to TOOLS:  TOOLS["get_rate"] = get_rate
 
+@tool(parse_docstring=True)
+def get_rate(product: str, rate_type: str) -> float:
+    """Today's interest rate in percent per year. Use when the customer asks for a rate or needs one for an EMI.
+
+    Args:
+        product: "home_loan" or "personal_loan"
+        rate_type: "floating" or "fixed" (personal loans are fixed only)
+    """
+    card = {("home_loan", "floating"): 8.5, ("home_loan", "fixed"): 9.0, ("personal_loan", "fixed"): 10.5}
+    return card[(product, rate_type)]
+
+
+TOOLS["get_rate"] = get_rate
 
 # ================================================================ run me after every TODO
 def _step(n, fn):
