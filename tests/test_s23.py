@@ -23,34 +23,31 @@ from s23_check import STUDENT_PATH, check_s23_work, parse_sse  # noqa: E402
 STARTER = ROOT / "module03" / "s23_starter.py"
 
 # What a finished student file looks like - each TODO replaced.
-FILLED = {
-    'raise NotImplementedError("TODO 1")': 'return {"status": "ok", "model": os.environ["MODEL"]}',
-    "    message: str        # TODO 2a": "    message: str = Field(min_length=1, max_length=2000)  # TODO 2a",
-    "    # TODO 2b: add two more fields:   tool_steps: list[str]    and    turns: int\n":
-        "    tool_steps: list[str]\n    turns: int\n",
-    'raise NotImplementedError("TODO 3")': "return history[-2 * keep_turns:] if keep_turns > 0 else []",
-    'raise NotImplementedError("TODO 4")':
-        "history = SESSIONS.setdefault(req.session_id, [])\n"
-        "    messages = [SystemMessage(SYSTEM), *window(history), HumanMessage(req.message)]\n"
-        "    answer, steps = run_turn(get_llm(), messages)\n"
-        "    history += [HumanMessage(req.message), AIMessage(answer)]\n"
-        "    return ChatResponse(session_id=req.session_id, answer=answer, tool_steps=steps, turns=len(history) // 2)",
-    '    raise NotImplementedError("TODO 5")\n\n\n@app.post("/chat/stream")':
-        '    return f"event: {event}\\ndata: {json.dumps(data)}\\n\\n"\n\n\n@app.post("/chat/stream")',
-    '    raise NotImplementedError("TODO 5")\n\n\n# ----':
-        "    history = SESSIONS.setdefault(req.session_id, [])\n"
-        "    messages = [SystemMessage(SYSTEM), *window(history), HumanMessage(req.message)]\n\n"
-        "    def events():\n"
-        "        for kind, text in stream_turn(get_llm(), messages):\n"
-        '            if kind == "done":\n'
-        "                history.extend([HumanMessage(req.message), AIMessage(text)])\n"
-        '            yield sse(kind, {"text": text})\n\n'
-        '    return StreamingResponse(events(), media_type="text/event-stream")\n\n\n# ----',
-}
-STRETCH = (
-    '\n\n@app.delete("/sessions/{session_id}")\n'
-    "def forget(session_id: str):\n"
-    '    return {"deleted": SESSIONS.pop(session_id, None) is not None}\n\n\nif __name__ == "__main__":')
+KEY = ROOT / "S23" / "s23_answer_key.py"      # instructor only: gitignored, students don't have it
+
+
+def answer(name: str):
+    if not KEY.exists():
+        pytest.skip("instructor answer key not present (that's expected on a student laptop)")
+    ns: dict = {}
+    exec(KEY.read_text(encoding="utf-8"), ns)
+    return ns[name]
+
+
+class _Key:
+    """FILLED, loaded only when a test uses it - so student laptops skip instead of failing."""
+
+    def keys(self):
+        return answer("FILLED").keys()
+
+    def items(self):
+        return answer("FILLED").items()
+
+    def __getitem__(self, k):
+        return answer("FILLED")[k]
+
+
+FILLED = _Key()
 
 
 def student_repo(tmp_path, source: str):
@@ -92,7 +89,7 @@ def test_a_finished_file_passes_every_check(tmp_path):
 
 
 def test_the_stretch_is_recognised(tmp_path):
-    src = filled().replace('\n\nif __name__ == "__main__":', STRETCH, 1)
+    src = filled().replace('\n\nif __name__ == "__main__":', answer("STRETCH"), 1)
     r = by_name(check_s23_work(student_repo(tmp_path, src)))
     assert r["TODO 6 (stretch) - DELETE /sessions/{id}"].detail == "done"
 
@@ -177,3 +174,29 @@ def test_the_simple_version_passes_the_same_checks(tmp_path):
                                          encoding="utf-8")
     failed = [(r.name, r.detail) for r in check_s23_work(repo) if not r.passed]
     assert not failed, failed
+
+
+def test_setup_copies_once_and_prints_the_next_commands(tmp_path):
+    import subprocess
+    repo = tmp_path / "genai-course-work"
+    repo.mkdir()
+    env = {**os.environ, "WORK_REPO": str(repo)}
+    run = lambda *a: subprocess.run([sys.executable, str(ROOT / "module03" / "s23_setup.py"), *a], env=env,
+                                    capture_output=True, text=True, cwd=tmp_path)
+    out = run()
+    assert out.returncode == 0, out.stderr
+    app = repo / "s23" / "app.py"
+    assert app.read_text(encoding="utf-8") == (ROOT / "module03" / "s23_simple.py").read_text(encoding="utf-8")
+    assert "uv run python" in out.stdout and str(app) in out.stdout
+    app.write_text("# my edits\n", encoding="utf-8")
+    assert "Kept" in run().stdout and app.read_text(encoding="utf-8") == "# my edits\n"   # never overwrites
+    run("--fresh")
+    assert "def window" in app.read_text(encoding="utf-8")
+
+
+def test_setup_refuses_a_missing_folder(tmp_path):
+    import subprocess
+    env = {**os.environ, "WORK_REPO": str(tmp_path / "nope")}
+    out = subprocess.run([sys.executable, str(ROOT / "module03" / "s23_setup.py")], env=env, capture_output=True,
+                         text=True, cwd=tmp_path)
+    assert out.returncode != 0 and "doesn't exist" in out.stderr

@@ -315,8 +315,9 @@ uv sync                                  # NEW: fastapi==0.162.0 and uvicorn==0.
 $env:WORK_REPO = "$HOME\Documents\genai-course-work"
 uv run jupyter lab module03/s23_serving.ipynb             # Section 1 copies the starter into your work repo
 uv run python $env:WORK_REPO\s23\app.py                  # terminal 1: YOUR server on http://127.0.0.1:8000 (/docs to try it)
-# Stuck, or want to see it working first?  module03\s23_simple.py is a COMPLETE server: copy it to $env:WORK_REPO\s23\app.py,
-# run it the same way, then change one CHANGE ME line at a time (memory window, /health, prompt, step cap, request size).
+# Simplest start: module03\s23_simple.py is a COMPLETE server. One command copies it to your work repo as s23\app.py
+# and prints the exact commands to run next:   uv run python module03/s23_setup.py
+# Then change one CHANGE ME line at a time (memory window, /health, prompt, step cap, request size).
 uv run python module03/s23_client.py                     # terminal 2: talks to it - memory, sessions, 422, a streamed answer
 uv run pytest tests/test_s23.py -rs      # checkpoint: tests YOUR endpoints with a scripted model (offline, no tokens)
 ```
@@ -343,16 +344,33 @@ with a fallback; apps send one URL and one key. You call it with raw HTTP and wi
 watch the gateway fall back, then start the gateway and an app together with Docker Compose. Your Groq key stays in your course `.env`
 (`API_KEY`) and never enters an image. Prepares Mini-Project 1 (ShopAssist).
 
-## Mini-Project 1 — ShopAssist (weekend, 2 × 2.5 h, solo)
+## Session 24 — embeddings: searching by meaning (starts Module 4)
+
+```powershell
+git pull
+uv sync                                   # NEW: fastembed==0.9.1 - embedding models on your CPU, no key, no cost
+uv run python module04/s24_demo.py search "my earbuds stopped working"   # keyword vs meaning, side by side
+uv run python module04/s24_demo.py compare                              # keyword vs two embedding models, hit@3
+uv run jupyter lab module04/s24_embeddings.ipynb                       # HOMEWORK: Parts A-D
+uv run python module04/s24_setup.py                                     # copies your homework file to <work repo>\s24\search.py
+uv run python "<your work repo>\s24\search.py"                          # runs YOUR functions; writes s24\results.md
+uv run pytest tests/test_s24.py -rs                                      # checkpoint (offline)
+```
+Taught on the board and live; the notebook is **homework**. Terms: `module04/terms_s24.md`. Data: the 14 Northwind help-centre
+articles in `module04/help_centre/` (53 sections, the same store as MP1). The first embedding downloads **BAAI/bge-small-en-v1.5**
+(~67 MB) once - use home Wi-Fi or a hotspot; after that everything is offline. Your file has four TODOs: `cosine()`, `top_k()`,
+`split_sections()` and three questions of your own. Stuck? `module04/s24_common_errors.md`. Submission: commit and push `s24/`.
+
+## Mini-Project 1 — ShopAssist (classroom, 2 sessions × 2.5 h on separate days, solo)
 
 ```powershell
 git pull
 # on GitHub: create an EMPTY repo called shopassist-mp1, then git clone it (e.g. into Documents)
-$env:MP1_REPO = "$HOME\Documents\shopassist-mp1"
+# add ONE line to this course repo's .env:   MP1_REPO=C:\Users\you\Documents\shopassist-mp1
 uv run python module03/mp1_setup.py                       # copies the starter + writes YOUR repo's .env (git-ignored)
-cd $env:MP1_REPO ; uv sync ; docker compose up --build    # gateway + ShopAssist -> http://localhost:8000/docs
+cd <your shopassist-mp1 folder> ; uv sync ; docker compose up --build    # gateway + ShopAssist -> http://localhost:8000/docs
 uv run python eval/run_eval.py                            # evidence: 10 golden, a memory probe, 4 attacks
-cd <course repo> ; uv run pytest tests/test_mp1.py -rs    # checkpoint (offline; reads YOUR repo via MP1_REPO)
+cd <course repo> ; uv run pytest tests/test_mp1.py -rs    # checkpoint (offline; reads YOUR repo via MP1_REPO in .env)
 ```
 Errors: `module03/mp1_common_errors.md`. A new app, built alone: order support for Northwind Store (a fictional online store) with
 LangChain tools, per-session memory, a defended prompt and streamed answers (S18-S23), reaching Groq **only through the LiteLLM
@@ -389,6 +407,8 @@ tests/test_mp1.py           Mini-Project 1 checkpoint (tests your own shopassist
 module03/mp1_starter/       Mini-Project 1 starter: ShopAssist app, gateway, Compose, eval set
 module02/                   Module 2 (prompt engineering): S14-S18 notebooks, helpers, work-repo steps
 module03/                   Module 3 (LLM applications): S19-S23 notebooks, helpers, work-repo steps
+module04/                   Module 4 (embeddings & vector databases): S24 demo, homework notebook, help centre
+tests/test_s24.py           Session 24 checkpoint (tests your own s24/search.py)
 cheatsheet/python-for-agents.md
 tools/update_course.py      safe update: back up your edited notebooks, then git pull
 UPDATING.md                 how to update when git pull refuses
